@@ -1,0 +1,149 @@
+syntax = "proto3";
+package marzban_manager;
+
+enum DataLimitResetStrategy {
+  NO_RESET = 0;
+  DAY = 1;
+  WEEK = 2;
+  MONTH = 3;
+  YEAR = 4;
+}
+
+enum Status {
+  ACTIVE = 0;
+  DISABLED = 1;
+  LIMITED = 2;
+  EXPIRED = 3;
+  ON_HOLD = 4;
+}
+
+message ProxySettings {
+  string id = 1;
+  string flow = 2;
+}
+
+message NextPlan {
+  bool add_remaining_traffic = 1;
+  optional int64 data_limit = 2;
+  optional int64 expire = 3;
+  bool fire_on_either = 4;
+}
+
+message AdminInfo {
+  string username = 1;
+  bool is_sudo = 2;
+  int64 telegram_id = 3;
+  string discord_webhook = 4;
+  int64 users_usage = 5;
+}
+
+message InboundList {
+  repeated string values = 1;
+}
+
+message UserResponse {
+  string username = 1;
+  map<string, ProxySettings> proxies = 2;
+  optional int64 expire = 3;
+  optional int64 data_limit = 4;
+  optional DataLimitResetStrategy data_limit_reset_strategy = 5;
+  map<string, InboundList> inbounds = 6;
+  optional string note = 7;
+  optional string sub_updated_at = 8;
+  optional string sub_last_user_agent = 9;
+  optional string online_at = 10;
+  optional int64 on_hold_expire_duration = 11;
+  optional string on_hold_timeout = 12;
+  optional Status status = 13;
+  optional int64 used_traffic = 14;
+  optional int64 lifetime_used_traffic = 15;
+  repeated string links = 16;
+  optional string subscription_url = 17;
+  optional string subscription_token = 18;
+  map<string, InboundList> excluded_inbounds = 19;
+  optional NextPlan next_plan = 20;
+  optional AdminInfo admin = 21;
+  optional string created_at = 22;
+}
+
+message UserCreate {
+  string username = 1;
+  map<string, ProxySettings> proxies = 2;
+  optional int64 expire = 3;
+  optional int64 data_limit = 4;
+  optional DataLimitResetStrategy data_limit_reset_strategy = 5;
+  map<string, InboundList> inbounds = 6;
+  optional string note = 7;
+  optional string sub_updated_at = 8;
+  optional string sub_last_user_agent = 9;
+  optional string online_at = 10;
+  optional int64 on_hold_expire_duration = 11;
+  optional string on_hold_timeout = 12;
+  optional Status status = 13;
+  optional NextPlan next_plan = 14;
+}
+
+message UserModify {
+  map<string, ProxySettings> proxies = 1;
+  optional int64 expire = 2;
+  optional int64 data_limit = 3;
+  optional DataLimitResetStrategy data_limit_reset_strategy = 4;
+  map<string, InboundList> inbounds = 5;
+  optional string note = 6;
+  optional string sub_updated_at = 7;
+  optional string sub_last_user_agent = 8;
+  optional string online_at = 9;
+  optional int64 on_hold_expire_duration = 10;
+  optional string on_hold_timeout = 11;
+  optional Status status = 12;
+  optional NextPlan next_plan = 13;
+}
+
+message UpdateUserRequest {
+  string username = 1;
+  UserModify update = 2;
+}
+
+message UpdateUserReply {
+  UserResponse user = 1;
+}
+
+message GetAllUsersRequest {
+  int32 offset = 1;
+  int32 limit = 2;
+}
+
+message GetAllUsersReply {
+  repeated UserResponse users = 1;
+  int32 total = 2;
+}
+
+message GetUserRequest {
+  string username = 1;
+}
+
+message ProxyInbound {
+  string tag = 1;
+  string protocol = 2;
+  string network = 3;
+  string tls = 4;
+  string port = 5;
+}
+
+message ProxyInboundList {
+  repeated ProxyInbound values = 1;
+}
+
+message GetInboundsReply {
+  map<string, ProxyInboundList> inbounds = 1;
+}
+
+message Empty {}
+
+service MarzbanManager {
+  rpc add_user(UserCreate) returns (UserResponse);
+  rpc update_user(UpdateUserRequest) returns (UpdateUserReply);
+  rpc get_user(GetUserRequest) returns (UserResponse);
+  rpc get_all_users(GetAllUsersRequest) returns (GetAllUsersReply);
+  rpc get_inbounds(Empty) returns (GetInboundsReply);
+}
