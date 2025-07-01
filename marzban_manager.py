@@ -1,4 +1,3 @@
-import json
 import os
 import grpc
 import logging
@@ -13,11 +12,7 @@ import marzban_manager_pb2_grpc as proto_grpc
 
 from google.protobuf.json_format import MessageToDict
 
-from environments import (
-    ENV_MB_PANEL_URL,
-    ENV_MB_PANEL_USER,
-    ENV_MB_PANEL_PASSWORD
-)
+from environments import ENV_MB_PANEL_URL, ENV_MB_PANEL_USER, ENV_MB_PANEL_PASSWORD
 
 
 def to_proto_status(status: str) -> proto.Status:
@@ -62,7 +57,9 @@ def to_proto_data_limit_reset_strategy(strategy: str) -> proto.DataLimitResetStr
     raise ValueError(f"Unknown data limit reset strategy: {strategy}")
 
 
-def proto_data_limit_reset_strategy_to_str(strategy: proto.DataLimitResetStrategy) -> str:
+def proto_data_limit_reset_strategy_to_str(
+    strategy: proto.DataLimitResetStrategy,
+) -> str:
     if strategy == proto.DataLimitResetStrategy.NO_RESET:
         return "no_reset"
     if strategy == proto.DataLimitResetStrategy.DAY:
@@ -76,9 +73,7 @@ def proto_data_limit_reset_strategy_to_str(strategy: proto.DataLimitResetStrateg
     raise ValueError(f"Unknown data limit reset strategy: {strategy}")
 
 
-def to_proto_user_response(
-    user: marzban.UserResponse
-) -> proto.UserResponse:
+def to_proto_user_response(user: marzban.UserResponse) -> proto.UserResponse:
     proto_user = proto.UserResponse()
     if user.username is not None:
         proto_user.username = user.username
@@ -102,7 +97,8 @@ def to_proto_user_response(
 
     if user.data_limit_reset_strategy is not None:
         proto_user.data_limit_reset_strategy = to_proto_data_limit_reset_strategy(
-            user.data_limit_reset_strategy)
+            user.data_limit_reset_strategy
+        )
 
     if user.inbounds:
         for key, inbound_list in user.inbounds.items():
@@ -191,15 +187,20 @@ def _to_marzban_user(object, marzban_class):
     return marzban_class(
         # у UserModify может не быть username
         username=getattr(object, "username", None),
-        proxies={
-            k: marzban.ProxySettings(**MessageToDict(v)) for k, v in object.proxies.items()
-        } if object.proxies else {},
+        proxies=(
+            {
+                k: marzban.ProxySettings(**MessageToDict(v))
+                for k, v in object.proxies.items()
+            }
+            if object.proxies
+            else {}
+        ),
         expire=object.expire or None,
         data_limit=object.data_limit or None,
         data_limit_reset_strategy=object.data_limit_reset_strategy or "no_reset",
-        inbounds={
-            k: v.values for k, v in object.inbounds.items()
-        } if object.inbounds else {},
+        inbounds=(
+            {k: v.values for k, v in object.inbounds.items()} if object.inbounds else {}
+        ),
         note=object.note or None,
         sub_updated_at=object.sub_updated_at or None,
         sub_last_user_agent=object.sub_last_user_agent or None,
@@ -207,9 +208,11 @@ def _to_marzban_user(object, marzban_class):
         on_hold_expire_duration=object.on_hold_expire_duration or None,
         on_hold_timeout=object.on_hold_timeout or None,
         status=object.status or "active",
-        next_plan=marzban.NextPlanModel(
-            **MessageToDict(object.next_plan)
-        ) if object.HasField("next_plan") else None,
+        next_plan=(
+            marzban.NextPlanModel(**MessageToDict(object.next_plan))
+            if object.HasField("next_plan")
+            else None
+        ),
     )
 
 
@@ -238,39 +241,42 @@ class MarzbanManager(proto_grpc.MarzbanManager):
                     self.__token = await self._RefreshToken()
                     return await func(self, *args, **kwargs)
                 raise
+
         return wrapper
-    
-    async def _RefreshToken(self):
+
+    async def _refresh_token(self):
         """
         Refresh the token using the Marzban API.
         """
-        _, mb_panel_user, mb_panel_password = MarzbanManager.__GetEnv()
+        _, mb_panel_user, mb_panel_password = MarzbanManager.__get_env()
 
-        self.__token = await self.__api.get_token(username=mb_panel_user, password=mb_panel_password)
+        self.__token = await self.__api.get_token(
+            username=mb_panel_user, password=mb_panel_password
+        )
 
         if not self.__token:
             raise ValueError("Failed to get token from the panel")
 
     @classmethod
-    def __GetEnv(cls) -> tuple[str, str, str]:
+    def __get_env(cls) -> tuple[str, str, str]:
         mb_panel_url = os.getenv(ENV_MB_PANEL_URL)
         mb_panel_user = os.getenv(ENV_MB_PANEL_USER)
         mb_panel_password = os.getenv(ENV_MB_PANEL_PASSWORD)
 
         if not mb_panel_url:
-            raise ValueError(f'{ENV_MB_PANEL_URL} environment variable is not set')
+            raise ValueError(f"{ENV_MB_PANEL_URL} environment variable is not set")
 
         if not mb_panel_user:
-            raise ValueError(f'{ENV_MB_PANEL_USER} environment variable is not set')
+            raise ValueError(f"{ENV_MB_PANEL_USER} environment variable is not set")
 
         if not mb_panel_password:
-            raise ValueError(f'{ENV_MB_PANEL_PASSWORD} environment variable is not set')
+            raise ValueError(f"{ENV_MB_PANEL_PASSWORD} environment variable is not set")
 
         return (mb_panel_url, mb_panel_user, mb_panel_password)
 
     @classmethod
-    async def Create(cls):
-        mb_panel_url, mb_panel_user, mb_panel_password = cls.__GetEnv()
+    async def create(cls):
+        mb_panel_url, mb_panel_user, mb_panel_password = cls.__get_env()
 
         api = MarzbanAPI(base_url=mb_panel_url)
         token = await api.get_token(username=mb_panel_user, password=mb_panel_password)
@@ -280,12 +286,9 @@ class MarzbanManager(proto_grpc.MarzbanManager):
 
         return cls(api, token)
 
-
     @__retry_on_unauthorized
-    async def AddUser(
-        self,
-        request: proto.UserCreate,
-        context: grpc.aio.ServicerContext
+    async def add_user(
+        self, request: proto.UserCreate, context: grpc.aio.ServicerContext
     ) -> proto.UserResponse:
         try:
             logging.info(f"Adding user: {request.username}")
@@ -296,7 +299,7 @@ class MarzbanManager(proto_grpc.MarzbanManager):
                 context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
                 context.set_details(details)
                 return proto.UserResponse()
-            
+
             if not request.proxies:
                 details = f"Failed to add user '{request.username}': proxies empty"
                 logging.error(details)
@@ -307,8 +310,7 @@ class MarzbanManager(proto_grpc.MarzbanManager):
             user_create = to_marzban_user_create(request)
 
             user_response = await self.__api.add_user(
-                user=user_create,
-                token=self.__token.access_token
+                user=user_create, token=self.__token.access_token
             )
             return to_proto_user_response(user_response)
         except httpx.HTTPStatusError as e:
@@ -326,12 +328,9 @@ class MarzbanManager(proto_grpc.MarzbanManager):
             context.set_details(f"Failed to add user: {request.username}")
             return proto.UserResponse()
 
-
     @__retry_on_unauthorized
-    async def UpdateUser(
-        self,
-        request: proto.UpdateUserRequest,
-        context: grpc.aio.ServicerContext
+    async def update_user(
+        self, request: proto.UpdateUserRequest, context: grpc.aio.ServicerContext
     ) -> proto.UpdateUserReply:
         try:
             logging.info(f"Updating user: {request.username}")
@@ -339,7 +338,7 @@ class MarzbanManager(proto_grpc.MarzbanManager):
             user_response = await self.__api.modify_user(
                 username=request.username,
                 user=user_modify,
-                token=self.__token.access_token
+                token=self.__token.access_token,
             )
             return proto.UpdateUserReply(user=to_proto_user_response(user_response))
         except httpx.HTTPError as e:
@@ -348,31 +347,26 @@ class MarzbanManager(proto_grpc.MarzbanManager):
             context.set_details(f"Failed to update user: {request.username}")
             return proto.UpdateUserReply()
 
-
     @__retry_on_unauthorized
-    async def GetUser(
-        self,
-        request: proto.GetUserRequest,
-        context: grpc.aio.ServicerContext
+    async def get_user(
+        self, request: proto.GetUserRequest, context: grpc.aio.ServicerContext
     ) -> proto.UserResponse:
         try:
             logging.info(f"Fetching user: {request.username}")
-            return to_proto_user_response(await self.__api.get_user(
-                username=request.username,
-                token=self.__token.access_token
-            ))
+            return to_proto_user_response(
+                await self.__api.get_user(
+                    username=request.username, token=self.__token.access_token
+                )
+            )
         except httpx.HTTPError as e:
             logging.error(f"Failed to fetch user: {e}")
             context.set_code(grpc.StatusCode.NOT_FOUND)
             context.set_details(f"User not found: {request.username}")
             return proto.UserResponse()
-        
 
     @__retry_on_unauthorized
-    async def GetInbounds(
-        self,
-        request: proto.Empty,
-        context: grpc.aio.ServicerContext
+    async def get_inbounds(
+        self, request: proto.Empty, context: grpc.aio.ServicerContext
     ) -> proto.GetInboundsReply:
         try:
             logging.info("Getting inbounds")
@@ -387,7 +381,7 @@ class MarzbanManager(proto_grpc.MarzbanManager):
                                 protocol=inb["protocol"],
                                 network=inb["network"],
                                 tls=inb["tls"],
-                                port=str(inb["port"])
+                                port=str(inb["port"]),
                             )
                             for inb in inbound_list
                         ]

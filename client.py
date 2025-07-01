@@ -25,6 +25,7 @@ import marzban_manager_pb2_grpc as proto_grpc
 from datetime import datetime, timedelta, timezone
 from google.protobuf.json_format import MessageToDict
 
+
 async def main():
     # NOTE(gRPC Python Team): .close() is possible on a channel and should be
     # used in circumstances in which the with statement does not fit the needs
@@ -35,15 +36,13 @@ async def main():
         channel = grpc.aio.insecure_channel("localhost:50051")
         stub = proto_grpc.MarzbanManagerStub(channel)
 
-        inbounds = await stub.GetInbounds(
-            proto.Empty()
-        )
+        inbounds = await stub.GetInbounds(proto.Empty())
 
         create_user_request = proto.UserCreate(
             username="ADMIN",
-            proxies={"vless": proto.ProxySettings(flow="xtls-rprx-vision")}
+            proxies={"vless": proto.ProxySettings(flow="xtls-rprx-vision")},
         )
-        
+
         inbounds_dict = MessageToDict(inbounds)
 
         for k, v in inbounds_dict["inbounds"].items():
@@ -54,20 +53,20 @@ async def main():
 
         logging.info(f"client received:\n{response}")
 
-        #response = await stub.GetUser(
+        # response = await stub.GetUser(
         #    proto.GetUserRequest(
         #        username="594514115"
         #    )
-        #)
+        # )
 
-        #logging.info(f"client received:\n{response}")
+        # logging.info(f"client received:\n{response}")
     except grpc.aio.AioRpcError as e:
         logging.error(f"gRPC error: {e.code()} - {e.details()}")
 
+
 if __name__ == "__main__":
     logging.basicConfig(
-        format='[%(asctime)s][%(name)s][%(levelname)s]: %(message)s',
-        level=logging.INFO
+        format="[%(asctime)s][%(name)s][%(levelname)s]: %(message)s", level=logging.INFO
     )
 
     logging.basicConfig()
