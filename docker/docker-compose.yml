@@ -1,0 +1,11 @@
+services:
+  mbms:
+    restart: unless-stopped
+    network_mode: host
+    image: mbms:v1.0
+    env_file:
+      - .env
+    privileged: true
+    build:
+      context: .
+      dockerfile: Dockerfile

@@ -1,3 +1,4 @@
+import os
 import json
 import asyncio
 import logging
@@ -5,6 +6,7 @@ import grpc
 import marzban_manager_pb2_grpc
 
 from marzban_manager import MarzbanManager
+from environments import ENV_MB_MS_GRPC_PORT
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +25,8 @@ def parse_json(json_string, default=None):
 
 
 async def main():
-    listen_addr = "[::]:50051"
+    grpc_server_port = os.getenv(ENV_MB_MS_GRPC_PORT)
+    listen_addr = f"[::]:{grpc_server_port}"
 
     server = grpc.aio.server()
     server.add_insecure_port(listen_addr)
