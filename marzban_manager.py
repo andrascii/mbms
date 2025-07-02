@@ -195,19 +195,35 @@ def _to_marzban_user(object, marzban_class):
             if object.proxies
             else {}
         ),
-        expire=object.expire or None,
-        data_limit=object.data_limit or None,
-        data_limit_reset_strategy=object.data_limit_reset_strategy or "no_reset",
+        expire=object.expire if object.HasField("expire") else None,
+        data_limit=object.data_limit if object.HasField("data_limit") else None,
+        data_limit_reset_strategy=(
+            object.data_limit_reset_strategy
+            if object.HasField("data_limit_reset_strategy")
+            else None
+        ),
         inbounds=(
             {k: v.values for k, v in object.inbounds.items()} if object.inbounds else {}
         ),
-        note=object.note or None,
-        sub_updated_at=object.sub_updated_at or None,
-        sub_last_user_agent=object.sub_last_user_agent or None,
-        online_at=object.online_at or None,
-        on_hold_expire_duration=object.on_hold_expire_duration or None,
-        on_hold_timeout=object.on_hold_timeout or None,
-        status=object.status or "active",
+        note=object.note if object.HasField("note") else None,
+        sub_updated_at=(
+            object.sub_updated_at if object.HasField("sub_updated_at") else None
+        ),
+        sub_last_user_agent=(
+            object.sub_last_user_agent
+            if object.HasField("sub_last_user_agent")
+            else None
+        ),
+        online_at=object.online_at if object.HasField("online_at") else None,
+        on_hold_expire_duration=(
+            object.on_hold_expire_duration
+            if object.HasField("on_hold_expire_duration")
+            else None
+        ),
+        on_hold_timeout=(
+            object.on_hold_timeout if object.HasField("on_hold_timeout") else None
+        ),
+        status=object.status if object.HasField("status") else None,
         next_plan=(
             marzban.NextPlanModel(**MessageToDict(object.next_plan))
             if object.HasField("next_plan")
@@ -286,12 +302,11 @@ class MarzbanManager(proto_grpc.MarzbanManager):
 
         return cls(api, token)
 
-    @__retry_on_unauthorized
     async def add_user(
         self, request: proto.UserCreate, context: grpc.aio.ServicerContext
     ) -> proto.UserResponse:
         try:
-            logging.info(f"Adding user: {request.username}")
+            logging.info(f"{__name__} for {request.username}")
 
             if not request.inbounds:
                 details = f"Failed to add user '{request.username}': inbounds empty"
@@ -307,12 +322,8 @@ class MarzbanManager(proto_grpc.MarzbanManager):
                 context.set_details(details)
                 return proto.UserResponse()
 
-            user_create = to_marzban_user_create(request)
-
-            user_response = await self.__api.add_user(
-                user=user_create, token=self.__token.access_token
-            )
-            return to_proto_user_response(user_response)
+            response = await self.__api_add_user(request)
+            return to_proto_user_response(response)
         except httpx.HTTPStatusError as e:
             logging.error(f"Failed to add user: {e}")
             if e.response.status_code == 409:
@@ -328,49 +339,58 @@ class MarzbanManager(proto_grpc.MarzbanManager):
             context.set_details(f"Failed to add user: {request.username}")
             return proto.UserResponse()
 
-    @__retry_on_unauthorized
     async def update_user(
         self, request: proto.UpdateUserRequest, context: grpc.aio.ServicerContext
     ) -> proto.UpdateUserReply:
         try:
-            logging.info(f"Updating user: {request.username}")
-            user_modify = to_marzban_user_modify(request.user)
-            user_response = await self.__api.modify_user(
-                username=request.username,
-                user=user_modify,
-                token=self.__token.access_token,
-            )
-            return proto.UpdateUserReply(user=to_proto_user_response(user_response))
+            logging.info(f"{__name__} for {request.username}")
+            response = await self.__api_modify_user(request)
+            return proto.UpdateUserReply(user=to_proto_user_response(response))
         except httpx.HTTPError as e:
             logging.error(f"Failed to update user: {e}")
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(f"Failed to update user: {request.username}")
             return proto.UpdateUserReply()
 
-    @__retry_on_unauthorized
     async def get_user(
         self, request: proto.GetUserRequest, context: grpc.aio.ServicerContext
     ) -> proto.UserResponse:
         try:
-            logging.info(f"Fetching user: {request.username}")
-            return to_proto_user_response(
-                await self.__api.get_user(
-                    username=request.username, token=self.__token.access_token
-                )
-            )
+            logging.info(f"{__name__} for {request.username}")
+            response = await self.__api_get_user(request)
+            return to_proto_user_response(response)
         except httpx.HTTPError as e:
             logging.error(f"Failed to fetch user: {e}")
             context.set_code(grpc.StatusCode.NOT_FOUND)
             context.set_details(f"User not found: {request.username}")
             return proto.UserResponse()
 
-    @__retry_on_unauthorized
+    async def get_all_users(
+        self, request: proto.GetAllUsersRequest, context: grpc.aio.ServicerContext
+    ) -> proto.GetAllUsersReply:
+        try:
+            logging.info(f"{__name__} for {request}")
+            all_users = await self.__api_get_all_users(request)
+            reply = proto.GetAllUsersReply(total=all_users.total)
+            proto_user_list: list[proto.UserResponse] = [
+                to_proto_user_response(user)
+                for user in all_users.users
+            ]
+            reply.users.extend(proto_user_list)
+            return reply
+        except httpx.HTTPError as e:
+            details = f"Failed to get all users: {e}"
+            logging.error(details)
+            context.set_code(grpc.StatusCode.INTERNAL)
+            context.set_details(details)
+            return proto.GetInboundsReply()
+
     async def get_inbounds(
         self, request: proto.Empty, context: grpc.aio.ServicerContext
     ) -> proto.GetInboundsReply:
         try:
-            logging.info("Getting inbounds")
-            inbounds = await self.__api.get_inbounds(token=self.__token.access_token)
+            logging.info(__name__)
+            inbounds = await self.__api_get_inbounds(request)
 
             return proto.GetInboundsReply(
                 inbounds={
@@ -394,3 +414,49 @@ class MarzbanManager(proto_grpc.MarzbanManager):
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(f"Failed to get inbounds: {e}")
             return proto.GetInboundsReply()
+
+    @__retry_on_unauthorized
+    async def __api_add_user(self, request: proto.UserCreate) -> marzban.UserResponse:
+        logging.debug(f"{__name__} called for {request}")
+        user_create = to_marzban_user_create(request)
+        return await self.__api.add_user(
+            user=user_create, token=self.__token.access_token
+        )
+
+    @__retry_on_unauthorized
+    async def __api_modify_user(
+        self, request: proto.UserModify
+    ) -> marzban.UserResponse:
+        logging.debug(f"{__name__} called for {request}")
+        user_modify = to_marzban_user_modify(request.user)
+        return await self.__api.modify_user(
+            username=request.username,
+            user=user_modify,
+            token=self.__token.access_token,
+        )
+
+    @__retry_on_unauthorized
+    async def __api_get_user(
+        self, request: proto.GetUserRequest
+    ) -> marzban.UserResponse:
+        logging.debug(f"{__name__} called for {request}")
+        return await self.__api.get_user(
+            username=request.username, token=self.__token.access_token
+        )
+
+    @__retry_on_unauthorized
+    async def __api_get_all_users(
+        self, request: proto.GetAllUsersRequest
+    ) -> marzban.UsersResponse:
+        logging.debug(f"{__name__} called for {request}")
+        return await self.__api.get_users(
+            offset=request.offset if request.HasField("offset") else None,
+            limit=request.limit if request.HasField("limit") else None,
+            username=request.username if request.HasField("username") else None,
+            search=request.search if request.HasField("search") else None,
+            token=self.__token.access_token,
+        )
+    
+    @__retry_on_unauthorized
+    async def __api_get_inbounds(self, request: proto.Empty):
+        return await self.__api.get_inbounds(token=self.__token.access_token)

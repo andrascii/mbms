@@ -17,6 +17,7 @@ from __future__ import print_function
 
 import logging
 
+import json
 import grpc
 import asyncio
 import marzban_manager_pb2 as proto
@@ -24,6 +25,43 @@ import marzban_manager_pb2_grpc as proto_grpc
 
 from datetime import datetime, timedelta, timezone
 from google.protobuf.json_format import MessageToDict
+
+async def add_user_example(stub: proto_grpc.MarzbanManagerStub, inbounds: proto.GetInboundsReply):
+    create_user_request = proto.UserCreate(
+        username="ADMIN",
+        proxies={"vless": proto.ProxySettings(flow="xtls-rprx-vision")},
+    )
+
+    inbounds_dict = MessageToDict(inbounds)
+
+    for k, v in inbounds_dict["inbounds"].items():
+        for inbound in v["values"]:
+            create_user_request.inbounds[k].values.append(inbound["tag"])
+
+    return await stub.add_user(create_user_request)
+
+async def update_user_example(stub: proto_grpc.MarzbanManagerStub):
+    ...
+
+async def get_user_example(stub: proto_grpc.MarzbanManagerStub, username: str) -> proto.UserResponse:
+    return await stub.get_user(proto.GetUserRequest(username=username))
+
+async def get_all_users_example(
+    stub: proto_grpc.MarzbanManagerStub,
+    username: str = None,
+    offset: int = None,
+    limit: int = None,
+    search: str = None
+) -> proto.GetAllUsersReply:
+    return await stub.get_all_users(proto.GetAllUsersRequest(
+        username=username,
+        offset=offset,
+        limit=limit,
+        search=search
+    ))
+
+async def get_inbounds_example(stub: proto_grpc.MarzbanManagerStub):
+    return await stub.get_inbounds(proto.Empty())
 
 
 async def main():
@@ -36,30 +74,18 @@ async def main():
         channel = grpc.aio.insecure_channel("localhost:50051")
         stub = proto_grpc.MarzbanManagerStub(channel)
 
-        inbounds = await stub.GetInbounds(proto.Empty())
+        response = add_user_example(stub)
+        response = await get_user_example(stub, "594514115")
+        logging.info(f"get user received:\n{response}")
 
-        create_user_request = proto.UserCreate(
-            username="ADMIN",
-            proxies={"vless": proto.ProxySettings(flow="xtls-rprx-vision")},
+        response = await get_all_users_example(
+            stub,
+            limit=500,
+            offset=0
         )
 
-        inbounds_dict = MessageToDict(inbounds)
+        logging.info(f"got {len(response.users)} users")
 
-        for k, v in inbounds_dict["inbounds"].items():
-            for inbound in v["values"]:
-                create_user_request.inbounds[k].values.append(inbound["tag"])
-
-        response = await stub.AddUser(create_user_request)
-
-        logging.info(f"client received:\n{response}")
-
-        # response = await stub.GetUser(
-        #    proto.GetUserRequest(
-        #        username="594514115"
-        #    )
-        # )
-
-        # logging.info(f"client received:\n{response}")
     except grpc.aio.AioRpcError as e:
         logging.error(f"gRPC error: {e.code()} - {e.details()}")
 

@@ -109,8 +109,11 @@ message UpdateUserReply {
 }
 
 message GetAllUsersRequest {
-  int32 offset = 1;
-  int32 limit = 2;
+  optional int32 offset = 1;
+  optional int32 limit = 2;
+  optional string username = 3;
+  optional Status status = 4;
+  optional string search = 5;
 }
 
 message GetAllUsersReply {

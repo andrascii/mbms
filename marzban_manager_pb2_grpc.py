@@ -5,26 +5,23 @@ import warnings
 
 import marzban_manager_pb2 as marzban__manager__pb2
 
-GRPC_GENERATED_VERSION = "1.73.1"
+GRPC_GENERATED_VERSION = '1.73.1'
 GRPC_VERSION = grpc.__version__
 _version_not_supported = False
 
 try:
     from grpc._utilities import first_version_is_lower
-
-    _version_not_supported = first_version_is_lower(
-        GRPC_VERSION, GRPC_GENERATED_VERSION
-    )
+    _version_not_supported = first_version_is_lower(GRPC_VERSION, GRPC_GENERATED_VERSION)
 except ImportError:
     _version_not_supported = True
 
 if _version_not_supported:
     raise RuntimeError(
-        f"The grpc package installed is at version {GRPC_VERSION},"
-        + f" but the generated code in marzban_manager_pb2_grpc.py depends on"
-        + f" grpcio>={GRPC_GENERATED_VERSION}."
-        + f" Please upgrade your grpc module to grpcio>={GRPC_GENERATED_VERSION}"
-        + f" or downgrade your generated code using grpcio-tools<={GRPC_VERSION}."
+        f'The grpc package installed is at version {GRPC_VERSION},'
+        + f' but the generated code in marzban_manager_pb2_grpc.py depends on'
+        + f' grpcio>={GRPC_GENERATED_VERSION}.'
+        + f' Please upgrade your grpc module to grpcio>={GRPC_GENERATED_VERSION}'
+        + f' or downgrade your generated code using grpcio-tools<={GRPC_VERSION}.'
     )
 
 
@@ -38,35 +35,30 @@ class MarzbanManagerStub(object):
             channel: A grpc.Channel.
         """
         self.add_user = channel.unary_unary(
-            "/marzban_manager.MarzbanManager/add_user",
-            request_serializer=marzban__manager__pb2.UserCreate.SerializeToString,
-            response_deserializer=marzban__manager__pb2.UserResponse.FromString,
-            _registered_method=True,
-        )
+                '/marzban_manager.MarzbanManager/add_user',
+                request_serializer=marzban__manager__pb2.UserCreate.SerializeToString,
+                response_deserializer=marzban__manager__pb2.UserResponse.FromString,
+                _registered_method=True)
         self.update_user = channel.unary_unary(
-            "/marzban_manager.MarzbanManager/update_user",
-            request_serializer=marzban__manager__pb2.UpdateUserRequest.SerializeToString,
-            response_deserializer=marzban__manager__pb2.UpdateUserReply.FromString,
-            _registered_method=True,
-        )
+                '/marzban_manager.MarzbanManager/update_user',
+                request_serializer=marzban__manager__pb2.UpdateUserRequest.SerializeToString,
+                response_deserializer=marzban__manager__pb2.UpdateUserReply.FromString,
+                _registered_method=True)
         self.get_user = channel.unary_unary(
-            "/marzban_manager.MarzbanManager/get_user",
-            request_serializer=marzban__manager__pb2.GetUserRequest.SerializeToString,
-            response_deserializer=marzban__manager__pb2.UserResponse.FromString,
-            _registered_method=True,
-        )
+                '/marzban_manager.MarzbanManager/get_user',
+                request_serializer=marzban__manager__pb2.GetUserRequest.SerializeToString,
+                response_deserializer=marzban__manager__pb2.UserResponse.FromString,
+                _registered_method=True)
         self.get_all_users = channel.unary_unary(
-            "/marzban_manager.MarzbanManager/get_all_users",
-            request_serializer=marzban__manager__pb2.GetAllUsersRequest.SerializeToString,
-            response_deserializer=marzban__manager__pb2.GetAllUsersReply.FromString,
-            _registered_method=True,
-        )
+                '/marzban_manager.MarzbanManager/get_all_users',
+                request_serializer=marzban__manager__pb2.GetAllUsersRequest.SerializeToString,
+                response_deserializer=marzban__manager__pb2.GetAllUsersReply.FromString,
+                _registered_method=True)
         self.get_inbounds = channel.unary_unary(
-            "/marzban_manager.MarzbanManager/get_inbounds",
-            request_serializer=marzban__manager__pb2.Empty.SerializeToString,
-            response_deserializer=marzban__manager__pb2.GetInboundsReply.FromString,
-            _registered_method=True,
-        )
+                '/marzban_manager.MarzbanManager/get_inbounds',
+                request_serializer=marzban__manager__pb2.Empty.SerializeToString,
+                response_deserializer=marzban__manager__pb2.GetInboundsReply.FromString,
+                _registered_method=True)
 
 
 class MarzbanManagerServicer(object):
@@ -75,94 +67,87 @@ class MarzbanManagerServicer(object):
     def add_user(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details("Method not implemented!")
-        raise NotImplementedError("Method not implemented!")
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
     def update_user(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details("Method not implemented!")
-        raise NotImplementedError("Method not implemented!")
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
     def get_user(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details("Method not implemented!")
-        raise NotImplementedError("Method not implemented!")
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
     def get_all_users(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details("Method not implemented!")
-        raise NotImplementedError("Method not implemented!")
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
     def get_inbounds(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details("Method not implemented!")
-        raise NotImplementedError("Method not implemented!")
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
 
 def add_MarzbanManagerServicer_to_server(servicer, server):
     rpc_method_handlers = {
-        "add_user": grpc.unary_unary_rpc_method_handler(
-            servicer.add_user,
-            request_deserializer=marzban__manager__pb2.UserCreate.FromString,
-            response_serializer=marzban__manager__pb2.UserResponse.SerializeToString,
-        ),
-        "update_user": grpc.unary_unary_rpc_method_handler(
-            servicer.update_user,
-            request_deserializer=marzban__manager__pb2.UpdateUserRequest.FromString,
-            response_serializer=marzban__manager__pb2.UpdateUserReply.SerializeToString,
-        ),
-        "get_user": grpc.unary_unary_rpc_method_handler(
-            servicer.get_user,
-            request_deserializer=marzban__manager__pb2.GetUserRequest.FromString,
-            response_serializer=marzban__manager__pb2.UserResponse.SerializeToString,
-        ),
-        "get_all_users": grpc.unary_unary_rpc_method_handler(
-            servicer.get_all_users,
-            request_deserializer=marzban__manager__pb2.GetAllUsersRequest.FromString,
-            response_serializer=marzban__manager__pb2.GetAllUsersReply.SerializeToString,
-        ),
-        "get_inbounds": grpc.unary_unary_rpc_method_handler(
-            servicer.get_inbounds,
-            request_deserializer=marzban__manager__pb2.Empty.FromString,
-            response_serializer=marzban__manager__pb2.GetInboundsReply.SerializeToString,
-        ),
+            'add_user': grpc.unary_unary_rpc_method_handler(
+                    servicer.add_user,
+                    request_deserializer=marzban__manager__pb2.UserCreate.FromString,
+                    response_serializer=marzban__manager__pb2.UserResponse.SerializeToString,
+            ),
+            'update_user': grpc.unary_unary_rpc_method_handler(
+                    servicer.update_user,
+                    request_deserializer=marzban__manager__pb2.UpdateUserRequest.FromString,
+                    response_serializer=marzban__manager__pb2.UpdateUserReply.SerializeToString,
+            ),
+            'get_user': grpc.unary_unary_rpc_method_handler(
+                    servicer.get_user,
+                    request_deserializer=marzban__manager__pb2.GetUserRequest.FromString,
+                    response_serializer=marzban__manager__pb2.UserResponse.SerializeToString,
+            ),
+            'get_all_users': grpc.unary_unary_rpc_method_handler(
+                    servicer.get_all_users,
+                    request_deserializer=marzban__manager__pb2.GetAllUsersRequest.FromString,
+                    response_serializer=marzban__manager__pb2.GetAllUsersReply.SerializeToString,
+            ),
+            'get_inbounds': grpc.unary_unary_rpc_method_handler(
+                    servicer.get_inbounds,
+                    request_deserializer=marzban__manager__pb2.Empty.FromString,
+                    response_serializer=marzban__manager__pb2.GetInboundsReply.SerializeToString,
+            ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-        "marzban_manager.MarzbanManager", rpc_method_handlers
-    )
+            'marzban_manager.MarzbanManager', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
-    server.add_registered_method_handlers(
-        "marzban_manager.MarzbanManager", rpc_method_handlers
-    )
+    server.add_registered_method_handlers('marzban_manager.MarzbanManager', rpc_method_handlers)
 
 
-# This class is part of an EXPERIMENTAL API.
-
-
+ # This class is part of an EXPERIMENTAL API.
 class MarzbanManager(object):
     """Missing associated documentation comment in .proto file."""
 
     @staticmethod
-    def add_user(
-        request,
-        target,
-        options=(),
-        channel_credentials=None,
-        call_credentials=None,
-        insecure=False,
-        compression=None,
-        wait_for_ready=None,
-        timeout=None,
-        metadata=None,
-    ):
+    def add_user(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
         return grpc.experimental.unary_unary(
             request,
             target,
-            "/marzban_manager.MarzbanManager/add_user",
+            '/marzban_manager.MarzbanManager/add_user',
             marzban__manager__pb2.UserCreate.SerializeToString,
             marzban__manager__pb2.UserResponse.FromString,
             options,
@@ -173,26 +158,23 @@ class MarzbanManager(object):
             wait_for_ready,
             timeout,
             metadata,
-            _registered_method=True,
-        )
+            _registered_method=True)
 
     @staticmethod
-    def update_user(
-        request,
-        target,
-        options=(),
-        channel_credentials=None,
-        call_credentials=None,
-        insecure=False,
-        compression=None,
-        wait_for_ready=None,
-        timeout=None,
-        metadata=None,
-    ):
+    def update_user(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
         return grpc.experimental.unary_unary(
             request,
             target,
-            "/marzban_manager.MarzbanManager/update_user",
+            '/marzban_manager.MarzbanManager/update_user',
             marzban__manager__pb2.UpdateUserRequest.SerializeToString,
             marzban__manager__pb2.UpdateUserReply.FromString,
             options,
@@ -203,26 +185,23 @@ class MarzbanManager(object):
             wait_for_ready,
             timeout,
             metadata,
-            _registered_method=True,
-        )
+            _registered_method=True)
 
     @staticmethod
-    def get_user(
-        request,
-        target,
-        options=(),
-        channel_credentials=None,
-        call_credentials=None,
-        insecure=False,
-        compression=None,
-        wait_for_ready=None,
-        timeout=None,
-        metadata=None,
-    ):
+    def get_user(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
         return grpc.experimental.unary_unary(
             request,
             target,
-            "/marzban_manager.MarzbanManager/get_user",
+            '/marzban_manager.MarzbanManager/get_user',
             marzban__manager__pb2.GetUserRequest.SerializeToString,
             marzban__manager__pb2.UserResponse.FromString,
             options,
@@ -233,26 +212,23 @@ class MarzbanManager(object):
             wait_for_ready,
             timeout,
             metadata,
-            _registered_method=True,
-        )
+            _registered_method=True)
 
     @staticmethod
-    def get_all_users(
-        request,
-        target,
-        options=(),
-        channel_credentials=None,
-        call_credentials=None,
-        insecure=False,
-        compression=None,
-        wait_for_ready=None,
-        timeout=None,
-        metadata=None,
-    ):
+    def get_all_users(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
         return grpc.experimental.unary_unary(
             request,
             target,
-            "/marzban_manager.MarzbanManager/get_all_users",
+            '/marzban_manager.MarzbanManager/get_all_users',
             marzban__manager__pb2.GetAllUsersRequest.SerializeToString,
             marzban__manager__pb2.GetAllUsersReply.FromString,
             options,
@@ -263,26 +239,23 @@ class MarzbanManager(object):
             wait_for_ready,
             timeout,
             metadata,
-            _registered_method=True,
-        )
+            _registered_method=True)
 
     @staticmethod
-    def get_inbounds(
-        request,
-        target,
-        options=(),
-        channel_credentials=None,
-        call_credentials=None,
-        insecure=False,
-        compression=None,
-        wait_for_ready=None,
-        timeout=None,
-        metadata=None,
-    ):
+    def get_inbounds(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
         return grpc.experimental.unary_unary(
             request,
             target,
-            "/marzban_manager.MarzbanManager/get_inbounds",
+            '/marzban_manager.MarzbanManager/get_inbounds',
             marzban__manager__pb2.Empty.SerializeToString,
             marzban__manager__pb2.GetInboundsReply.FromString,
             options,
@@ -293,5 +266,4 @@ class MarzbanManager(object):
             wait_for_ready,
             timeout,
             metadata,
-            _registered_method=True,
-        )
+            _registered_method=True)
