@@ -240,7 +240,7 @@ def to_marzban_user_modify(object: proto.UserModify) -> marzban.UserModify:
     return _to_marzban_user(object, marzban.UserModify)
 
 
-class MarzbanManager(proto_grpc.MarzbanManager):
+class Server(proto_grpc.MarzbanManager):
     def __init__(self, api: MarzbanAPI, token: marzban.Token):
         super().__init__()
         self.__api = api
@@ -254,7 +254,7 @@ class MarzbanManager(proto_grpc.MarzbanManager):
             except httpx.HTTPStatusError as e:
                 if e.response.status_code == 401:
                     logging.warning("Unauthorized request, refreshing token")
-                    self.__token = await self._RefreshToken()
+                    await self._refresh_token()
                     return await func(self, *args, **kwargs)
                 raise
 
@@ -264,7 +264,7 @@ class MarzbanManager(proto_grpc.MarzbanManager):
         """
         Refresh the token using the Marzban API.
         """
-        _, mb_panel_user, mb_panel_password = MarzbanManager.__get_env()
+        _, mb_panel_user, mb_panel_password = Server.__get_env()
 
         self.__token = await self.__api.get_token(
             username=mb_panel_user, password=mb_panel_password

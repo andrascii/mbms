@@ -1,6 +1,6 @@
 marzban
 grpcio
 grpcio-tools
-autopep8
 pylint
 black
+orjson

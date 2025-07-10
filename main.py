@@ -1,37 +1,27 @@
 import os
-import json
 import asyncio
 import logging
 import grpc
-import marzban_manager_pb2_grpc
+import marzban_manager_pb2_grpc as proto_grpc
 
-from marzban_manager import MarzbanManager
+from server import Server
 from environments import ENV_MB_MS_GRPC_PORT
 
 logger = logging.getLogger(__name__)
 
 
-def parse_json(json_string, default=None):
-    """
-    Парсит JSON строку с обработкой ошибок.
-    Возвращает default при ошибке (по умолчанию None).
-    """
-    try:
-        return json.loads(json_string)
-    except json.JSONDecodeError:
-        return default
-    except Exception:
-        return default
-
-
 async def main():
     grpc_server_port = os.getenv(ENV_MB_MS_GRPC_PORT)
+
+    if not grpc_server_port:
+        raise ValueError(f"environment variable {ENV_MB_MS_GRPC_PORT} was not set")
+
     listen_addr = f"[::]:{grpc_server_port}"
 
     server = grpc.aio.server()
     server.add_insecure_port(listen_addr)
-    manager = await MarzbanManager.create()
-    marzban_manager_pb2_grpc.add_MarzbanManagerServicer_to_server(manager, server)
+    manager = await Server.create()
+    proto_grpc.add_MarzbanManagerServicer_to_server(manager, server)
 
     logging.info(f"Server will listen on {listen_addr}")
 
