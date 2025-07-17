@@ -223,7 +223,7 @@ def _to_marzban_user(object, marzban_class):
         on_hold_timeout=(
             object.on_hold_timeout if object.HasField("on_hold_timeout") else None
         ),
-        status=object.status if object.HasField("status") else None,
+        status=proto_status_to_str(object.status) if object.HasField("status") else None,
         next_plan=(
             marzban.NextPlanModel(**MessageToDict(object.next_plan))
             if object.HasField("next_plan")

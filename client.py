@@ -17,7 +17,6 @@ from __future__ import print_function
 
 import logging
 
-import json
 import grpc
 import asyncio
 import marzban_manager_pb2 as proto
