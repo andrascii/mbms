@@ -425,10 +425,10 @@ class Server(proto_grpc.MarzbanManager):
 
     @__retry_on_unauthorized
     async def __api_modify_user(
-        self, request: proto.UserModify
+        self, request: proto.UpdateUserRequest
     ) -> marzban.UserResponse:
         logging.debug(f"{__name__} called for {request}")
-        user_modify = to_marzban_user_modify(request.user)
+        user_modify = to_marzban_user_modify(request.update)
         return await self.__api.modify_user(
             username=request.username,
             user=user_modify,
