@@ -198,7 +198,7 @@ def _to_marzban_user(object, marzban_class):
         expire=object.expire if object.HasField("expire") else None,
         data_limit=object.data_limit if object.HasField("data_limit") else None,
         data_limit_reset_strategy=(
-            object.data_limit_reset_strategy
+            to_proto_data_limit_reset_strategy(object.data_limit_reset_strategy)
             if object.HasField("data_limit_reset_strategy")
             else None
         ),
@@ -428,7 +428,10 @@ class Server(proto_grpc.MarzbanManager):
         self, request: proto.UpdateUserRequest
     ) -> marzban.UserResponse:
         logging.debug(f"{__name__} called for {request}")
+
         user_modify = to_marzban_user_modify(request.update)
+        logging.debug(f"user modify JSON: {user_modify.model_dump(exclude_none=True)}")
+
         return await self.__api.modify_user(
             username=request.username,
             user=user_modify,
