@@ -5,22 +5,19 @@ import grpc
 import marzban_manager_pb2_grpc as proto_grpc
 
 from server import Server
-from environments import ENV_MB_MS_GRPC_PORT
+from config import Config
 
 logger = logging.getLogger(__name__)
 
 
 async def main():
-    grpc_server_port = os.getenv(ENV_MB_MS_GRPC_PORT)
+    config = Config()
 
-    if not grpc_server_port:
-        raise ValueError(f"environment variable {ENV_MB_MS_GRPC_PORT} was not set")
-
-    listen_addr = f"[::]:{grpc_server_port}"
+    listen_addr = f"[::]:{config.grpc_port}"
 
     server = grpc.aio.server()
     server.add_insecure_port(listen_addr)
-    manager = await Server.create()
+    manager = await Server.create(config=config)
     proto_grpc.add_MarzbanManagerServicer_to_server(manager, server)
 
     logging.info(f"Server will listen on {listen_addr}")

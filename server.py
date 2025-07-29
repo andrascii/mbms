@@ -12,7 +12,7 @@ import marzban_manager_pb2_grpc as proto_grpc
 
 from google.protobuf.json_format import MessageToDict
 
-from environments import ENV_MB_PANEL_URL, ENV_MB_PANEL_USER, ENV_MB_PANEL_PASSWORD
+from config import Config
 
 
 def to_proto_status(status: str) -> proto.Status:
@@ -241,8 +241,9 @@ def to_marzban_user_modify(object: proto.UserModify) -> marzban.UserModify:
 
 
 class Server(proto_grpc.MarzbanManager):
-    def __init__(self, api: MarzbanAPI, token: marzban.Token):
+    def __init__(self, config: Config, api: MarzbanAPI, token: marzban.Token):
         super().__init__()
+        self.__config = config
         self.__api = api
         self.__token = token
 
@@ -261,46 +262,22 @@ class Server(proto_grpc.MarzbanManager):
         return wrapper
 
     async def _refresh_token(self):
-        """
-        Refresh the token using the Marzban API.
-        """
-        _, mb_panel_user, mb_panel_password = Server.__get_env()
-
         self.__token = await self.__api.get_token(
-            username=mb_panel_user, password=mb_panel_password
+            username=self.__config.marzban_panel_user, password=self.__config.marzban_panel_password
         )
 
         if not self.__token:
             raise ValueError("Failed to get token from the panel")
 
     @classmethod
-    def __get_env(cls) -> tuple[str, str, str]:
-        mb_panel_url = os.getenv(ENV_MB_PANEL_URL)
-        mb_panel_user = os.getenv(ENV_MB_PANEL_USER)
-        mb_panel_password = os.getenv(ENV_MB_PANEL_PASSWORD)
-
-        if not mb_panel_url:
-            raise ValueError(f"{ENV_MB_PANEL_URL} environment variable is not set")
-
-        if not mb_panel_user:
-            raise ValueError(f"{ENV_MB_PANEL_USER} environment variable is not set")
-
-        if not mb_panel_password:
-            raise ValueError(f"{ENV_MB_PANEL_PASSWORD} environment variable is not set")
-
-        return (mb_panel_url, mb_panel_user, mb_panel_password)
-
-    @classmethod
-    async def create(cls):
-        mb_panel_url, mb_panel_user, mb_panel_password = cls.__get_env()
-
-        api = MarzbanAPI(base_url=mb_panel_url)
-        token = await api.get_token(username=mb_panel_user, password=mb_panel_password)
+    async def create(cls, config: Config):
+        api = MarzbanAPI(base_url=config.marzban_panel_url)
+        token = await api.get_token(username=config.marzban_panel_user, password=config.marzban_panel_password)
 
         if not token:
             raise ValueError("Failed to get token from the panel")
 
-        return cls(api, token)
+        return cls(config=config, api=api, token=token)
 
     async def add_user(
         self, request: proto.UserCreate, context: grpc.aio.ServicerContext
