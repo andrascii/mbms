@@ -1,8 +1,8 @@
-import os
 import grpc
 import logging
 import httpx
 import marzban
+import inspect
 from functools import wraps
 from marzban import MarzbanAPI
 from typing import Callable, Awaitable, Any
@@ -247,6 +247,32 @@ class Server(proto_grpc.MarzbanManager):
         self.__api = api
         self.__token = token
 
+    def __log_function_name(func):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            bound = inspect.signature(func).bind(*args, **kwargs)
+            bound.apply_defaults()
+            args_repr = []
+            for name, value in bound.arguments.items():
+                if name == "self":
+                    continue  # self не логируем
+
+                # Превращаем значение в строку и убираем переносы строк
+                val_str = str(value).replace("\n", " ").replace("\r", " ")
+
+                # Ограничиваем длину (чтобы не заспамить лог большими объектами)
+                if len(val_str) > 200:
+                    val_str = val_str[:200] + "...[truncated]"
+
+                args_repr.append(f"{name}={val_str!r}")
+
+            args_str = ", ".join(args_repr)
+            logging.info(f"called {func.__qualname__}({args_str})")
+
+            return await func(*args, **kwargs)
+
+        return wrapper
+
     def __retry_on_unauthorized(func: Callable[..., Awaitable[Any]]):
         @wraps(func)
         async def wrapper(self, *args, **kwargs):
@@ -271,7 +297,7 @@ class Server(proto_grpc.MarzbanManager):
 
     @classmethod
     async def create(cls, config: Config):
-        api = MarzbanAPI(base_url=config.marzban_panel_url)
+        api = MarzbanAPI(base_url=config.marzban_panel_url, timeout=None)
         token = await api.get_token(username=config.marzban_panel_user, password=config.marzban_panel_password)
 
         if not token:
@@ -283,7 +309,7 @@ class Server(proto_grpc.MarzbanManager):
         self, request: proto.UserCreate, context: grpc.aio.ServicerContext
     ) -> proto.UserResponse:
         try:
-            logging.info(f"{__name__} for {request.username}")
+            logging.info(f"{inspect.currentframe().f_code.co_name} for {request.username}")
 
             if not request.inbounds:
                 details = f"Failed to add user '{request.username}': inbounds empty"
@@ -301,6 +327,14 @@ class Server(proto_grpc.MarzbanManager):
 
             response = await self.__api_add_user(request)
             return to_proto_user_response(response)
+        
+        except httpx.ReadTimeout as e:
+            details = "add_user timeout error"
+            logging.error(details)
+            context.set_code(grpc.StatusCode.INTERNAL)
+            context.set_details(details)
+            return proto.UserResponse()
+        
         except httpx.HTTPStatusError as e:
             logging.error(f"Failed to add user: {e}")
             if e.response.status_code == 409:
@@ -310,6 +344,7 @@ class Server(proto_grpc.MarzbanManager):
                 context.set_code(grpc.StatusCode.INTERNAL)
                 context.set_details(f"User {request.username} could not be added: {e}")
             return proto.UserResponse()
+        
         except httpx.HTTPError as e:
             logging.error(f"Failed to add user: {e}")
             context.set_code(grpc.StatusCode.INTERNAL)
@@ -320,9 +355,17 @@ class Server(proto_grpc.MarzbanManager):
         self, request: proto.UpdateUserRequest, context: grpc.aio.ServicerContext
     ) -> proto.UpdateUserReply:
         try:
-            logging.info(f"{__name__} for {request.username}")
+            logging.info(f"{inspect.currentframe().f_code.co_name} for {request.username}")
             response = await self.__api_modify_user(request)
             return proto.UpdateUserReply(user=to_proto_user_response(response))
+        
+        except httpx.ReadTimeout as e:
+            details = "update_user timeout error"
+            logging.error(details)
+            context.set_code(grpc.StatusCode.INTERNAL)
+            context.set_details(details)
+            return proto.UpdateUserReply()
+
         except httpx.HTTPError as e:
             logging.error(f"Failed to update user: {e}")
             context.set_code(grpc.StatusCode.INTERNAL)
@@ -333,34 +376,52 @@ class Server(proto_grpc.MarzbanManager):
         self, request: proto.GetUserRequest, context: grpc.aio.ServicerContext
     ) -> proto.UserResponse:
         try:
-            logging.info(f"{__name__} for {request.username}")
+            logging.info(f"{inspect.currentframe().f_code.co_name} for {request.username}")
             response = await self.__api_get_user(request)
             return to_proto_user_response(response)
+        
+        except httpx.ReadTimeout as e:
+            details = "get_user timeout error"
+            logging.error(details)
+            context.set_code(grpc.StatusCode.INTERNAL)
+            context.set_details(details)
+            return proto.UserResponse()
+
         except httpx.HTTPError as e:
-            logging.error(f"Failed to fetch user: {e}")
+            logging.error(f"failed to fetch user: {e}")
             context.set_code(grpc.StatusCode.NOT_FOUND)
-            context.set_details(f"User not found: {request.username}")
+            context.set_details(f"user not found: {request.username}")
             return proto.UserResponse()
 
     async def get_all_users(
         self, request: proto.GetAllUsersRequest, context: grpc.aio.ServicerContext
     ) -> proto.GetAllUsersReply:
         try:
-            logging.info(f"{__name__} for {request}")
             all_users = await self.__api_get_all_users(request)
+
             reply = proto.GetAllUsersReply(total=all_users.total)
+
             proto_user_list: list[proto.UserResponse] = [
                 to_proto_user_response(user)
                 for user in all_users.users
             ]
+
             reply.users.extend(proto_user_list)
             return reply
-        except httpx.HTTPError as e:
-            details = f"Failed to get all users: {e}"
+        
+        except httpx.ReadTimeout as e:
+            details = "get_all_users timeout error"
             logging.error(details)
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(details)
-            return proto.GetInboundsReply()
+            return proto.GetAllUsersReply()
+        
+        except httpx.HTTPError as e:
+            details = f"failed to get all users: {e}"
+            logging.error(details)
+            context.set_code(grpc.StatusCode.INTERNAL)
+            context.set_details(details)
+            return proto.GetAllUsersReply()
 
     async def get_inbounds(
         self, request: proto.Empty, context: grpc.aio.ServicerContext
@@ -386,28 +447,34 @@ class Server(proto_grpc.MarzbanManager):
                     for key, inbound_list in inbounds.items()
                 }
             )
-        except httpx.HTTPError as e:
-            logging.error(f"Failed to get inbounds: {e}")
+        
+        except httpx.ReadTimeout as e:
+            details = "get_inbounds timeout error"
+            logging.error(details)
             context.set_code(grpc.StatusCode.INTERNAL)
-            context.set_details(f"Failed to get inbounds: {e}")
+            context.set_details(details)
+            return proto.GetInboundsReply()
+
+        except httpx.HTTPError as e:
+            logging.error(f"failed to get inbounds: {e}")
+            context.set_code(grpc.StatusCode.INTERNAL)
+            context.set_details(f"failed to get inbounds: {e}")
             return proto.GetInboundsReply()
 
     @__retry_on_unauthorized
+    @__log_function_name
     async def __api_add_user(self, request: proto.UserCreate) -> marzban.UserResponse:
-        logging.debug(f"{__name__} called for {request}")
         user_create = to_marzban_user_create(request)
         return await self.__api.add_user(
             user=user_create, token=self.__token.access_token
         )
 
     @__retry_on_unauthorized
+    @__log_function_name
     async def __api_modify_user(
         self, request: proto.UpdateUserRequest
     ) -> marzban.UserResponse:
-        logging.debug(f"{__name__} called for {request}")
-
         user_modify = to_marzban_user_modify(request.update)
-        logging.debug(f"user modify JSON: {user_modify.model_dump(exclude_none=True)}")
 
         return await self.__api.modify_user(
             username=request.username,
@@ -416,27 +483,29 @@ class Server(proto_grpc.MarzbanManager):
         )
 
     @__retry_on_unauthorized
+    @__log_function_name
     async def __api_get_user(
         self, request: proto.GetUserRequest
     ) -> marzban.UserResponse:
-        logging.debug(f"{__name__} called for {request}")
         return await self.__api.get_user(
             username=request.username, token=self.__token.access_token
         )
 
     @__retry_on_unauthorized
+    @__log_function_name
     async def __api_get_all_users(
         self, request: proto.GetAllUsersRequest
     ) -> marzban.UsersResponse:
-        logging.debug(f"{__name__} called for {request}")
         return await self.__api.get_users(
             offset=request.offset if request.HasField("offset") else None,
             limit=request.limit if request.HasField("limit") else None,
             username=request.username if request.HasField("username") else None,
             search=request.search if request.HasField("search") else None,
+            status=proto_status_to_str(request.status) if request.HasField("status") else None,
             token=self.__token.access_token,
         )
     
     @__retry_on_unauthorized
+    @__log_function_name
     async def __api_get_inbounds(self, request: proto.Empty):
         return await self.__api.get_inbounds(token=self.__token.access_token)

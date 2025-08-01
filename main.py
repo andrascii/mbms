@@ -13,7 +13,8 @@ async def main(config: Config):
     try:
         listen_addr = f"[::]:{config.grpc_port}"
 
-        server = grpc.aio.server()
+        options = [('grpc.max_message_length', 300 * 1024 * 1024)]
+        server = grpc.aio.server(options=options)
         server.add_insecure_port(listen_addr)
         manager = await Server.create(config=config)
         proto_grpc.add_MarzbanManagerServicer_to_server(manager, server)
