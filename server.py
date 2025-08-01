@@ -267,7 +267,7 @@ class Server(proto_grpc.MarzbanManager):
         )
 
         if not self.__token:
-            raise ValueError("Failed to get token from the panel")
+            raise ValueError("failed to get token from the panel")
 
     @classmethod
     async def create(cls, config: Config):
@@ -275,7 +275,7 @@ class Server(proto_grpc.MarzbanManager):
         token = await api.get_token(username=config.marzban_panel_user, password=config.marzban_panel_password)
 
         if not token:
-            raise ValueError("Failed to get token from the panel")
+            raise ValueError("failed to get token from the panel")
 
         return cls(config=config, api=api, token=token)
 

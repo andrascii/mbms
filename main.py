@@ -6,39 +6,51 @@ import marzban_manager_pb2_grpc as proto_grpc
 
 from server import Server
 from config import Config
+from common.setup_logger import setup_logger
 
-logger = logging.getLogger(__name__)
 
-
-async def main():
-    config = Config()
-
-    listen_addr = f"[::]:{config.grpc_port}"
-
-    server = grpc.aio.server()
-    server.add_insecure_port(listen_addr)
-    manager = await Server.create(config=config)
-    proto_grpc.add_MarzbanManagerServicer_to_server(manager, server)
-
-    logging.info(f"Server will listen on {listen_addr}")
-
-    await server.start()
-
+async def main(config: Config):
     try:
+        listen_addr = f"[::]:{config.grpc_port}"
+
+        server = grpc.aio.server()
+        server.add_insecure_port(listen_addr)
+        manager = await Server.create(config=config)
+        proto_grpc.add_MarzbanManagerServicer_to_server(manager, server)
+
+        logging.info(f"Server will listen on {listen_addr}")
+
+        await server.start()
         await server.wait_for_termination()
+
     except (asyncio.CancelledError, KeyboardInterrupt):
-        logging.info("Received shutdown signal")
+        logging.info("received shutdown signal")
+        await server.stop(0)
+
+    except Exception as e:
+        logging.info(f"error occurred during processing: {e}")
         await server.stop(0)
 
 
 if __name__ == "__main__":
-    logging.basicConfig(
-        format="[%(asctime)s][%(name)s][%(levelname)s]: %(message)s", level=logging.INFO
-    )
+    config = Config()
 
-    logging.basicConfig(level=logging.INFO)
+    log_level = logging.INFO
+
+    if config.log_level.lower() == "debug":
+        log_level = logging.DEBUG
+    if config.log_level.lower() == "info":
+        log_level = logging.INFO
+    if config.log_level.lower() == "warning":
+        log_level = logging.WARN
+    if config.log_level.lower() == "error":
+        log_level = logging.ERROR
+    if config.log_level.lower() == "critical":
+        log_level = logging.CRITICAL
+
+    setup_logger(filename="mbms.log", level=log_level)
 
     try:
-        asyncio.run(main())
+        asyncio.run(main(config=config))
     except KeyboardInterrupt:
         logging.info("Program interrupted by user")
