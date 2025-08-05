@@ -2,10 +2,15 @@ services:
   mbms:
     restart: unless-stopped
     network_mode: host
-    image: mbms:v1.0
+    image: mbms:v0.1
     env_file:
       - .env
     privileged: true
+    volumes:
+      - log:/app/log
     build:
       context: .
       dockerfile: Dockerfile
+
+volumes:
+  log:

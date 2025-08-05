@@ -329,7 +329,7 @@ class Server(proto_grpc.MarzbanManager):
             return to_proto_user_response(response)
         
         except httpx.ReadTimeout as e:
-            details = "add_user timeout error"
+            details = "{inspect.currentframe().f_code.co_name} timeout error"
             logging.error(details)
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(details)
@@ -360,7 +360,7 @@ class Server(proto_grpc.MarzbanManager):
             return proto.UpdateUserReply(user=to_proto_user_response(response))
         
         except httpx.ReadTimeout as e:
-            details = "update_user timeout error"
+            details = "{inspect.currentframe().f_code.co_name} timeout error"
             logging.error(details)
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(details)
@@ -381,7 +381,7 @@ class Server(proto_grpc.MarzbanManager):
             return to_proto_user_response(response)
         
         except httpx.ReadTimeout as e:
-            details = "get_user timeout error"
+            details = "{inspect.currentframe().f_code.co_name} timeout error"
             logging.error(details)
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(details)
@@ -410,7 +410,7 @@ class Server(proto_grpc.MarzbanManager):
             return reply
         
         except httpx.ReadTimeout as e:
-            details = "get_all_users timeout error"
+            details = "{inspect.currentframe().f_code.co_name} timeout error"
             logging.error(details)
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(details)
@@ -449,7 +449,7 @@ class Server(proto_grpc.MarzbanManager):
             )
         
         except httpx.ReadTimeout as e:
-            details = "get_inbounds timeout error"
+            details = "{inspect.currentframe().f_code.co_name} timeout error"
             logging.error(details)
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(details)

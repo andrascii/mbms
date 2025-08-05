@@ -2,6 +2,6 @@
 
 docker buildx build \
   --platform linux/arm64 \
-  -t vpn-telegram-bot:v1.0 \
+  -t mbms:v0.1 \
   -f Dockerfile \
-  --output type=docker,dest=vpn-telegram-bot-arm64.tar ../..
+  --output type=docker,dest=mbms-arm64.tar ..
