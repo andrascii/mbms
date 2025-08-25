@@ -198,7 +198,7 @@ def _to_marzban_user(object, marzban_class):
         expire=object.expire if object.HasField("expire") else None,
         data_limit=object.data_limit if object.HasField("data_limit") else None,
         data_limit_reset_strategy=(
-            to_proto_data_limit_reset_strategy(object.data_limit_reset_strategy)
+            proto_data_limit_reset_strategy_to_str(object.data_limit_reset_strategy)
             if object.HasField("data_limit_reset_strategy")
             else None
         ),
@@ -246,6 +246,32 @@ class Server(proto_grpc.MarzbanManager):
         self.__config = config
         self.__api = api
         self.__token = token
+
+    def __grpc_error_handler(response_type, err_details):
+        def decorator(func):
+            @wraps(func)
+            async def wrapper(self, request, context, *args, **kwargs):
+                func_name = func.__qualname__
+
+                try:
+                    return await func(self, request, context, *args, **kwargs)
+                except httpx.ReadTimeout:
+                    logging.error(f"{func_name} -> timeout error")
+                    context.set_code(grpc.StatusCode.DEADLINE_EXCEEDED)
+                    context.set_details(f"{err_details}: timeout")
+                    return response_type()
+                except httpx.HTTPError as e:
+                    logging.error(f"{func_name} -> HTTP error: {e}")
+                    context.set_code(grpc.StatusCode.INTERNAL)
+                    context.set_details(f"{err_details}: {str(e)}")
+                    return response_type()
+                except Exception as e:
+                    logging.exception(f"{func_name} -> unexpected error")
+                    context.set_code(grpc.StatusCode.UNKNOWN)
+                    context.set_details(f"{err_details}: {str(e)}")
+                    return response_type()
+            return wrapper
+        return decorator
 
     def __log_function_name(func):
         @wraps(func)
@@ -305,21 +331,22 @@ class Server(proto_grpc.MarzbanManager):
 
         return cls(config=config, api=api, token=token)
 
+    @__grpc_error_handler(proto.UserResponse, "failed to add user")
     async def add_user(
         self, request: proto.UserCreate, context: grpc.aio.ServicerContext
     ) -> proto.UserResponse:
         try:
-            logging.info(f"{inspect.currentframe().f_code.co_name} for {request.username}")
+            logging.info(f"called {inspect.currentframe().f_code.co_name} for {request.username}")
 
             if not request.inbounds:
-                details = f"Failed to add user '{request.username}': inbounds empty"
+                details = f"failed to add user '{request.username}': inbounds empty"
                 logging.error(details)
                 context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
                 context.set_details(details)
                 return proto.UserResponse()
 
             if not request.proxies:
-                details = f"Failed to add user '{request.username}': proxies empty"
+                details = f"failed to add user '{request.username}': proxies empty"
                 logging.error(details)
                 context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
                 context.set_details(details)
@@ -327,16 +354,9 @@ class Server(proto_grpc.MarzbanManager):
 
             response = await self.__api_add_user(request)
             return to_proto_user_response(response)
-        
-        except httpx.ReadTimeout as e:
-            details = "{inspect.currentframe().f_code.co_name} timeout error"
-            logging.error(details)
-            context.set_code(grpc.StatusCode.INTERNAL)
-            context.set_details(details)
-            return proto.UserResponse()
-        
+
         except httpx.HTTPStatusError as e:
-            logging.error(f"Failed to add user: {e}")
+            logging.error(f"failed to add user: {e}")
             if e.response.status_code == 409:
                 context.set_code(grpc.StatusCode.ALREADY_EXISTS)
                 context.set_details(f"User {request.username} already exists")
@@ -344,122 +364,65 @@ class Server(proto_grpc.MarzbanManager):
                 context.set_code(grpc.StatusCode.INTERNAL)
                 context.set_details(f"User {request.username} could not be added: {e}")
             return proto.UserResponse()
-        
-        except httpx.HTTPError as e:
-            logging.error(f"Failed to add user: {e}")
-            context.set_code(grpc.StatusCode.INTERNAL)
-            context.set_details(f"Failed to add user: {request.username}")
-            return proto.UserResponse()
 
+    @__grpc_error_handler(proto.UpdateUserReply, "failed to update user")
     async def update_user(
         self, request: proto.UpdateUserRequest, context: grpc.aio.ServicerContext
     ) -> proto.UpdateUserReply:
-        try:
-            logging.info(f"{inspect.currentframe().f_code.co_name} for {request.username}")
-            response = await self.__api_modify_user(request)
-            return proto.UpdateUserReply(user=to_proto_user_response(response))
-        
-        except httpx.ReadTimeout as e:
-            details = "{inspect.currentframe().f_code.co_name} timeout error"
-            logging.error(details)
-            context.set_code(grpc.StatusCode.INTERNAL)
-            context.set_details(details)
-            return proto.UpdateUserReply()
+        logging.info(f"called {inspect.currentframe().f_code.co_name} for {request.username}")
+        response = await self.__api_modify_user(request)
+        return proto.UpdateUserReply(user=to_proto_user_response(response))
 
-        except httpx.HTTPError as e:
-            logging.error(f"Failed to update user: {e}")
-            context.set_code(grpc.StatusCode.INTERNAL)
-            context.set_details(f"Failed to update user: {request.username}")
-            return proto.UpdateUserReply()
-
+    @__grpc_error_handler(proto.UserResponse, "failed to get user")
     async def get_user(
         self, request: proto.GetUserRequest, context: grpc.aio.ServicerContext
     ) -> proto.UserResponse:
-        try:
-            logging.info(f"{inspect.currentframe().f_code.co_name} for {request.username}")
-            response = await self.__api_get_user(request)
-            return to_proto_user_response(response)
-        
-        except httpx.ReadTimeout as e:
-            details = "{inspect.currentframe().f_code.co_name} timeout error"
-            logging.error(details)
-            context.set_code(grpc.StatusCode.INTERNAL)
-            context.set_details(details)
-            return proto.UserResponse()
+        logging.info(f"called {inspect.currentframe().f_code.co_name} for {request.username}")
+        response = await self.__api_get_user(request)
+        return to_proto_user_response(response)
 
-        except httpx.HTTPError as e:
-            logging.error(f"failed to fetch user: {e}")
-            context.set_code(grpc.StatusCode.NOT_FOUND)
-            context.set_details(f"user not found: {request.username}")
-            return proto.UserResponse()
-
+    @__grpc_error_handler(proto.GetAllUsersReply, "failed to get all users")
     async def get_all_users(
         self, request: proto.GetAllUsersRequest, context: grpc.aio.ServicerContext
     ) -> proto.GetAllUsersReply:
-        try:
-            all_users = await self.__api_get_all_users(request)
+        logging.info(f"called {inspect.currentframe().f_code.co_name}")
 
-            reply = proto.GetAllUsersReply(total=all_users.total)
+        all_users = await self.__api_get_all_users(request)
 
-            proto_user_list: list[proto.UserResponse] = [
-                to_proto_user_response(user)
-                for user in all_users.users
-            ]
+        reply = proto.GetAllUsersReply(total=all_users.total)
 
-            reply.users.extend(proto_user_list)
-            return reply
-        
-        except httpx.ReadTimeout as e:
-            details = "{inspect.currentframe().f_code.co_name} timeout error"
-            logging.error(details)
-            context.set_code(grpc.StatusCode.INTERNAL)
-            context.set_details(details)
-            return proto.GetAllUsersReply()
-        
-        except httpx.HTTPError as e:
-            details = f"failed to get all users: {e}"
-            logging.error(details)
-            context.set_code(grpc.StatusCode.INTERNAL)
-            context.set_details(details)
-            return proto.GetAllUsersReply()
+        proto_user_list: list[proto.UserResponse] = [
+            to_proto_user_response(user)
+            for user in all_users.users
+        ]
 
+        reply.users.extend(proto_user_list)
+        return reply
+
+    @__grpc_error_handler(proto.GetInboundsReply, "failed to get inbounds")
     async def get_inbounds(
         self, request: proto.Empty, context: grpc.aio.ServicerContext
     ) -> proto.GetInboundsReply:
-        try:
-            logging.info(__name__)
-            inbounds = await self.__api_get_inbounds(request)
+        logging.info(__name__)
+        inbounds = await self.__api_get_inbounds(request)
 
-            return proto.GetInboundsReply(
-                inbounds={
-                    key: proto.ProxyInboundList(
-                        values=[
-                            proto.ProxyInbound(
-                                tag=inb["tag"],
-                                protocol=inb["protocol"],
-                                network=inb["network"],
-                                tls=inb["tls"],
-                                port=str(inb["port"]),
-                            )
-                            for inb in inbound_list
-                        ]
-                    )
-                    for key, inbound_list in inbounds.items()
-                }
-            )
-        
-        except httpx.ReadTimeout as e:
-            details = "{inspect.currentframe().f_code.co_name} timeout error"
-            logging.error(details)
-            context.set_code(grpc.StatusCode.INTERNAL)
-            context.set_details(details)
-            return proto.GetInboundsReply()
-
-        except httpx.HTTPError as e:
-            logging.error(f"failed to get inbounds: {e}")
-            context.set_code(grpc.StatusCode.INTERNAL)
-            context.set_details(f"failed to get inbounds: {e}")
-            return proto.GetInboundsReply()
+        return proto.GetInboundsReply(
+            inbounds={
+                key: proto.ProxyInboundList(
+                    values=[
+                        proto.ProxyInbound(
+                            tag=inb["tag"],
+                            protocol=inb["protocol"],
+                            network=inb["network"],
+                            tls=inb["tls"],
+                            port=str(inb["port"]),
+                        )
+                        for inb in inbound_list
+                    ]
+                )
+                for key, inbound_list in inbounds.items()
+            }
+        )
 
     @__retry_on_unauthorized
     @__log_function_name
